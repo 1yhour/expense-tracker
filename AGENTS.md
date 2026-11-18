@@ -2,7 +2,7 @@
 
 ## Project
 Expense tracker REST API. Spring Boot 4.1.2, Java 25, Maven (wrapper), PostgreSQL, Spring Security + JWT.
-Status: entities exist for `users`, `user_settings`, `categories`, `transactions`, `budgets` (plus a `test` scaffold table); no repositories, services, or controllers yet.
+Status: JWT auth (register/login) works; entities exist for `users`, `user_settings`, `categories`, `transactions`, `budgets` (plus a leftover `test` table); no repositories/services for the finance domains yet.
 
 ## Commands (Windows PowerShell)
 - Run app: `.\mvnw.cmd spring-boot:run`
@@ -26,7 +26,10 @@ Status: entities exist for `users`, `user_settings`, `categories`, `transactions
 - `ExpenseTrackerApplicationTests.contextLoads` boots the full context and hits real PostgreSQL, so tests fail without the compose container.
 - Moving/renaming a package without `clean` leaves old `.class` files in `target/classes`; Hibernate then fails with "Entity classes [...] share the entity name". Run `.\mvnw.cmd clean test`, not just `test`.
 - Lombok `annotationProcessorPaths` are declared per-execution in `maven-compiler-plugin`; any new annotation processor must be added to both `default-compile` and `default-testCompile`.
-- JWT is planned via `spring-boot-starter-oauth2-resource-server` (already in `pom.xml`). Avoid adding a second JWT stack (jjwt) or `MapStruct`; use manual mapping.
+- JWT is implemented with jjwt 0.12 (`security/JwtService`, properties `app.jwt.secret` / `app.jwt.expiration-ms`). `spring-boot-starter-oauth2-resource-server` is still in the pom but unused — remove it rather than adding a third mechanism.
+- Auth needs a `UserDetailsService` bean (`security/CustomUserDetailsService`, username = email). Without it, `JwtAuthFilter` and `AuthServiceImpl` fail at startup with an unsatisfied dependency, not a helpful message.
+- `/error` must stay `permitAll()` in `SecurityConfig`: `OncePerRequestFilter` skips ERROR dispatches, so a secured `/error` turns 400/404 responses into 403s.
+- `JwtAuthFilter` uses Lombok `@Slf4j` (`log`); the inherited `logger` is Commons Logging and has no `{}` placeholder overload.
 - `management.endpoints.web.exposure.include` in `application.properties` is inert — no actuator dependency.
 - `DatabaseConnectionTests` writes to `users` inside a rolled-back transaction; it still requires the DB container.
 - The dev DB has a leftover `test` table from the deleted scaffold entity. Nothing maps to it, so it is safe to drop.
